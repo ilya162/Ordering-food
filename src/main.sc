@@ -1,23 +1,64 @@
-require: slotfilling/slotFilling.sc
-  module = sys.zb-common
-theme: /
+require: functions/funcs.js
+
+bind("onAnyError", function($context) {
+    var answerProblem = [
+        "Простите, сервис временно не работает."
+    ];
+    $reactions.answer(answerProblem);
+});
+
+theme: OnlineOrders
 
     state: Start
-        q!: $regex</start>
-        a: Начнём.
-
-    state: Hello
-        intent!: /привет
-        a: Привет привет
-
-    state: Bye
-        intent!: /пока
-        a: Пока пока
-
-    state: NoMatch
-        event!: noMatch
-        a: Я не понял. Вы сказали: {{$request.query}}
-
-    state: Match
-        event!: match
-        a: {{$context.intent.answer}}
+        q!: $*start
+        if: $request.age < 18;
+            go!: /Minor
+        else:
+            go!: ./CheckChannel
+            
+        state: Minor
+            a: Простите, сервис доступен только для совершеннолетних.
+            script:
+                $jsapi.stopSession;
+            
+        state: CheckChannel
+            if: $request.channelType === "whatsapp"
+                go!: /WhatsappOrder
+            elseif: $request.channelType === "chatwidget"
+                go!: /СhatwidgetOrder
+            else:
+                go!: /TelegramOrder
+                
+        state: WhatsappOrder
+            TransferToOperator:
+                messageBeforeTransfer = Перевожу на оператора.
+            script:
+                $jsapi.stopSession;
+                
+        state: СhatwidgetOrder
+            a: Добро пожаловать, что вас интересует?
+            timeout: /Goodbye || interval = "5 minutes"
+            q!: *
+            go!: /MainScenario
+            
+         state: TelegramOrder
+            a: Добро пожаловать, что вас интересует?
+            timeout: /Goodbye || interval = "5 minutes"
+            q!: *
+            go!: /MainScenario
+            
+        state: Wellcome
+            a: Добро пожаловать, что вас интересует?
+            q!: *
+            go!: /MainScenario
+            
+        state: WhatsappOrder
+            TransferToOperator:
+                messageBeforeTransfer = Перевожу на оператора.
+            script:
+                $jsapi.stopSession;
+            
+        state: MainScenario
+            a: 
+            
+            
